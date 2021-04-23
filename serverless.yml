@@ -1,0 +1,74 @@
+# serverless.yml
+
+service: ti-api-auth
+
+custom:
+  params:
+    userPoolArn: ${ssm:/${opt:stage, 'dev'}/auth/cognito/userPool/arn}
+    cognitoUserPool: ${ssm:/${opt:stage, 'dev'}/auth/cognito/userPool/id}
+    cognitoClientId: ${ssm:/${opt:stage, 'dev'}/auth/cognito/client/id}
+  corsMethods: 'GET,OPTIONS,POST'
+  corsHeaders: 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'
+  corsOrigins: '*'
+  serverless-offline:
+    httpPort: 5052
+    lambdaPort: 5053
+    host: 0.0.0.0
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+  environment:
+    COGNITO_USER_POOL: ${self:custom.params.cognitoUserPool}
+    COGNITO_CLIENT_ID: ${self:custom.params.cognitoClientId}
+  stackTags:
+    "ti:app": "Toro Investimentos"
+    "ti:stage-name": ${opt:stage, 'dev'}
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 'cognito-idp:AdminInitiateAuth'
+        - 'cognito-idp:AdminCreateUser'
+        - 'cognito-idp:ConfirmSignUp'
+        - 'cognito-idp:SignUp'
+        - 'cognito-idp:AdminGetUser'
+        - 'cognito-idp:GetUser'
+      Resource:
+        - '${self:custom.params.userPoolArn}'
+functions:
+  app:
+    handler: index.handler
+    description: API for manage auth
+    events:
+      - http:
+          method: POST
+          path: '/signup'
+          cors: true
+          private: false
+      - http:
+          method: POST
+          path: '/confirm-signup'
+          cors: true
+          private: false
+      - http:
+          method: POST
+          path: '/signin'
+          cors: true
+          private: false
+      - http:
+          method: POST
+          path: '/get-user'
+          cors: true
+          private: false
+package:
+  exclude:
+    - ./**
+  include:
+    - node_modules/**
+    - src/**
+    - ./index.js
+
+plugins:
+  - serverless-offline
